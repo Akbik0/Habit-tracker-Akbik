@@ -1,4 +1,5 @@
-export interface HabitData {
+export interface Habit {
+  id: string;
   name: string;
   currentStreak: number;
   bestStreak: number;
@@ -10,12 +11,20 @@ export interface HabitData {
   }>;
   badges: string[];
   reminderTime: string;
+  createdAt: string;
+  color: string;
+}
+
+export interface AppData {
+  habits: Habit[];
+  version: number;
 }
 
 const STORAGE_KEY = "habit-tracker-data";
 
-export const defaultHabitData: HabitData = {
-  name: "",
+export const createDefaultHabit = (name: string, color?: string): Habit => ({
+  id: `habit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  name,
   currentStreak: 0,
   bestStreak: 0,
   lastCheckIn: null,
@@ -23,25 +32,58 @@ export const defaultHabitData: HabitData = {
   history: [],
   badges: [],
   reminderTime: "19:00",
+  createdAt: new Date().toISOString(),
+  color: color || getRandomHabitColor(),
+});
+
+const HABIT_COLORS = [
+  "#9855f6", // purple
+  "#f472b6", // pink
+  "#60a5fa", // blue
+  "#34d399", // green
+  "#fbbf24", // yellow
+  "#fb7185", // rose
+  "#a78bfa", // violet
+  "#38bdf8", // sky
+];
+
+export const getRandomHabitColor = (): string => {
+  return HABIT_COLORS[Math.floor(Math.random() * HABIT_COLORS.length)];
 };
 
-export const loadHabitData = (): HabitData => {
+export const loadAppData = (): AppData => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return { ...defaultHabitData };
+    if (!stored) return { habits: [], version: 1 };
 
-    const data = JSON.parse(stored) as HabitData;
-    return { ...defaultHabitData, ...data };
+    const data = JSON.parse(stored) as AppData;
+
+    // Migration from old single habit format
+    if (!data.version && (data as any).name) {
+      const oldData = data as any;
+      const migratedHabit = createDefaultHabit(oldData.name || "My Habit");
+      migratedHabit.currentStreak = oldData.currentStreak || 0;
+      migratedHabit.bestStreak = oldData.bestStreak || 0;
+      migratedHabit.lastCheckIn = oldData.lastCheckIn || null;
+      migratedHabit.totalCompletions = oldData.totalCompletions || 0;
+      migratedHabit.history = oldData.history || [];
+      migratedHabit.badges = oldData.badges || [];
+      migratedHabit.reminderTime = oldData.reminderTime || "19:00";
+
+      return { habits: [migratedHabit], version: 1 };
+    }
+
+    return { habits: data.habits || [], version: data.version || 1 };
   } catch {
-    return { ...defaultHabitData };
+    return { habits: [], version: 1 };
   }
 };
 
-export const saveHabitData = (data: HabitData): void => {
+export const saveAppData = (data: AppData): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (error) {
-    console.error("Failed to save habit data:", error);
+    console.error("Failed to save app data:", error);
   }
 };
 
@@ -49,17 +91,56 @@ export const getTodayString = (): string => {
   return new Date().toISOString().split("T")[0];
 };
 
-export const hasCheckedInToday = (data: HabitData): boolean => {
-  return data.lastCheckIn === getTodayString();
+export const hasCheckedInToday = (habit: Habit): boolean => {
+  return habit.lastCheckIn === getTodayString();
 };
 
-export const calculateStreakReset = (data: HabitData): boolean => {
-  if (!data.lastCheckIn) return false;
+export const calculateStreakReset = (habit: Habit): boolean => {
+  if (!habit.lastCheckIn) return false;
 
   const today = new Date();
-  const lastCheckIn = new Date(data.lastCheckIn);
+  const lastCheckIn = new Date(habit.lastCheckIn);
   const diffTime = today.getTime() - lastCheckIn.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
   return diffDays > 1;
+};
+
+export const addHabit = (
+  appData: AppData,
+  habitName: string,
+  color?: string,
+): AppData => {
+  const newHabit = createDefaultHabit(habitName, color);
+  return {
+    ...appData,
+    habits: [...appData.habits, newHabit],
+  };
+};
+
+export const updateHabit = (
+  appData: AppData,
+  habitId: string,
+  updates: Partial<Habit>,
+): AppData => {
+  return {
+    ...appData,
+    habits: appData.habits.map((habit) =>
+      habit.id === habitId ? { ...habit, ...updates } : habit,
+    ),
+  };
+};
+
+export const deleteHabit = (appData: AppData, habitId: string): AppData => {
+  return {
+    ...appData,
+    habits: appData.habits.filter((habit) => habit.id !== habitId),
+  };
+};
+
+export const getHabitById = (
+  appData: AppData,
+  habitId: string,
+): Habit | undefined => {
+  return appData.habits.find((habit) => habit.id === habitId);
 };
