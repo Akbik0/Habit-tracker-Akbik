@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -10,84 +8,223 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import StreakDisplay from "@/components/StreakDisplay";
-import ProgressBar from "@/components/ProgressBar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Trophy, Settings } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+
+import HabitCard from "@/components/HabitCard";
+import HabitForm from "@/components/HabitForm";
 import Badge from "@/components/Badge";
-import { loadHabitData, hasCheckedInToday, HabitData } from "@/lib/storage";
+
+import {
+  loadAppData,
+  saveAppData,
+  addHabit,
+  updateHabit,
+  deleteHabit,
+  Habit,
+  AppData,
+} from "@/lib/storage";
 import {
   completeHabitToday,
   skipHabitToday,
-  updateHabitName,
   getMotivationalMessage,
   BADGES,
 } from "@/lib/habit-tracker";
-import { Settings, Trophy, Calendar } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import { requestNotificationPermission } from "@/lib/notifications";
+import {
+  requestNotificationPermission,
+  scheduleHabitReminders,
+  showDemoNotification,
+} from "@/lib/notifications";
 
 export default function Index() {
-  const [habitData, setHabitData] = useState<HabitData | null>(null);
-  const [checkedInToday, setCheckedInToday] = useState(false);
-  const [newHabitName, setNewHabitName] = useState("");
+  const [appData, setAppData] = useState<AppData | null>(null);
+  const [showHabitForm, setShowHabitForm] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [showBadges, setShowBadges] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
-    const data = loadHabitData();
-    setHabitData(data);
-    setCheckedInToday(hasCheckedInToday(data));
-    setNewHabitName(data.name);
+    const data = loadAppData();
+    setAppData(data);
 
-    // Request notification permission
+    // Request notification permission and schedule reminders
     requestNotificationPermission().then((granted) => {
-      if (granted) {
-        console.log("Notifications enabled");
+      if (granted && data.habits.length > 0) {
+        scheduleHabitReminders(
+          data.habits.map((h) => ({
+            name: h.name,
+            reminderTime: h.reminderTime,
+            id: h.id,
+          })),
+        );
       }
     });
   }, []);
 
-  const handleCompleteHabit = () => {
-    if (!habitData || checkedInToday) return;
+  const handleCompleteHabit = (habitId: string) => {
+    if (!appData) return;
 
-    const newData = completeHabitToday(habitData);
-    setHabitData(newData);
-    setCheckedInToday(true);
+    const habit = appData.habits.find((h) => h.id === habitId);
+    if (!habit) return;
 
-    toast({
-      title: "🎉 Habit completed!",
-      description: getMotivationalMessage(newData.currentStreak),
-    });
+    const newData = completeHabitToday(appData, habitId);
+    setAppData(newData);
+
+    const updatedHabit = newData.habits.find((h) => h.id === habitId);
+    if (updatedHabit) {
+      toast({
+        title: "🎉 Habit completed!",
+        description: getMotivationalMessage(updatedHabit.currentStreak),
+      });
+    }
   };
 
-  const handleSkipHabit = () => {
-    if (!habitData || checkedInToday) return;
+  const handleSkipHabit = (habitId: string) => {
+    if (!appData) return;
 
-    const newData = skipHabitToday(habitData);
-    setHabitData(newData);
-    setCheckedInToday(true);
+    const habit = appData.habits.find((h) => h.id === habitId);
+    if (!habit) return;
+
+    const newData = skipHabitToday(appData, habitId);
+    setAppData(newData);
 
     toast({
       title: "No worries!",
-      description: "Tomorrow is a fresh start! 🌅",
+      description: `Tomorrow is a fresh start for ${habit.name}! 🌅`,
       variant: "destructive",
     });
   };
 
-  const handleUpdateHabitName = () => {
-    if (!habitData || !newHabitName.trim()) return;
+  const handleCreateHabit = (habitData: {
+    name: string;
+    color: string;
+    reminderTime: string;
+  }) => {
+    if (!appData) return;
 
-    const newData = updateHabitName(habitData, newHabitName.trim());
-    setHabitData(newData);
-    setShowSettings(false);
+    const newData = addHabit(appData, habitData.name, habitData.color);
+    const newHabit = newData.habits[newData.habits.length - 1];
+
+    // Update the reminder time
+    const finalData = updateHabit(newData, newHabit.id, {
+      reminderTime: habitData.reminderTime,
+    });
+
+    setAppData(finalData);
+    saveAppData(finalData);
+
+    // Update reminders
+    scheduleHabitReminders(
+      finalData.habits.map((h) => ({
+        name: h.name,
+        reminderTime: h.reminderTime,
+        id: h.id,
+      })),
+    );
 
     toast({
-      title: "Habit updated!",
-      description: `Now tracking: ${newHabitName}`,
+      title: "🎯 New habit created!",
+      description: `${habitData.name} is ready to track!`,
     });
   };
 
-  if (!habitData) {
+  const handleEditHabit = (habit: Habit) => {
+    setEditingHabit(habit);
+    setShowHabitForm(true);
+  };
+
+  const handleUpdateHabit = (habitData: {
+    name: string;
+    color: string;
+    reminderTime: string;
+  }) => {
+    if (!appData || !editingHabit) return;
+
+    const newData = updateHabit(appData, editingHabit.id, {
+      name: habitData.name,
+      color: habitData.color,
+      reminderTime: habitData.reminderTime,
+    });
+
+    setAppData(newData);
+    saveAppData(newData);
+    setEditingHabit(null);
+
+    // Update reminders
+    scheduleHabitReminders(
+      newData.habits.map((h) => ({
+        name: h.name,
+        reminderTime: h.reminderTime,
+        id: h.id,
+      })),
+    );
+
+    toast({
+      title: "✅ Habit updated!",
+      description: `${habitData.name} has been updated!`,
+    });
+  };
+
+  const handleDeleteHabit = (habitId: string) => {
+    if (!appData) return;
+
+    const habit = appData.habits.find((h) => h.id === habitId);
+    if (!habit) return;
+
+    const newData = deleteHabit(appData, habitId);
+    setAppData(newData);
+    saveAppData(newData);
+    setDeleteConfirm(null);
+
+    // Update reminders
+    scheduleHabitReminders(
+      newData.habits.map((h) => ({
+        name: h.name,
+        reminderTime: h.reminderTime,
+        id: h.id,
+      })),
+    );
+
+    toast({
+      title: "🗑️ Habit deleted",
+      description: `${habit.name} has been removed.`,
+    });
+  };
+
+  const getAllBadges = () => {
+    if (!appData) return [];
+    const allBadges = new Set<string>();
+    appData.habits.forEach((habit) => {
+      habit.badges.forEach((badge) => allBadges.add(badge));
+    });
+    return Array.from(allBadges);
+  };
+
+  const getTotalStats = () => {
+    if (!appData)
+      return { totalCompletions: 0, totalBadges: 0, activeStreaks: 0 };
+
+    return {
+      totalCompletions: appData.habits.reduce(
+        (sum, h) => sum + h.totalCompletions,
+        0,
+      ),
+      totalBadges: getAllBadges().length,
+      activeStreaks: appData.habits.filter((h) => h.currentStreak > 0).length,
+    };
+  };
+
+  if (!appData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-game-purple/5 to-game-pink/5 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent" />
@@ -95,233 +232,67 @@ export default function Index() {
     );
   }
 
-  const needsHabitName = !habitData.name;
+  const stats = getTotalStats();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-game-purple/5 to-game-pink/5">
-      <div className="container max-w-md mx-auto px-4 py-6 space-y-6">
+      <div className="container max-w-2xl mx-auto px-4 py-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-game-purple to-game-pink bg-clip-text text-transparent">
-            Habit Quest
-          </h1>
-          <div className="flex gap-2">
-            <Dialog open={showHistory} onOpenChange={setShowHistory}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Calendar className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>📅 Your History</DialogTitle>
-                </DialogHeader>
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  {habitData.history.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-4">
-                      No history yet. Start your first day!
-                    </p>
-                  ) : (
-                    habitData.history.slice(0, 30).map((entry) => (
-                      <div
-                        key={entry.date}
-                        className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
-                      >
-                        <span className="text-sm">
-                          {new Date(entry.date).toLocaleDateString()}
-                        </span>
-                        <span className="text-lg">
-                          {entry.completed ? "✅" : "❌"}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
+          <div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-game-purple to-game-pink bg-clip-text text-transparent">
+              Habit Quest
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {appData.habits.length}{" "}
+              {appData.habits.length === 1 ? "habit" : "habits"} •{" "}
+              {stats.activeStreaks} active streaks
+            </p>
+          </div>
 
+          <div className="flex gap-2">
             <Dialog open={showBadges} onOpenChange={setShowBadges}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" className="relative">
                   <Trophy className="h-4 w-4" />
+                  {stats.totalBadges > 0 && (
+                    <div className="absolute -top-1 -right-1 bg-game-gold text-xs text-black rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                      {stats.totalBadges}
+                    </div>
+                  )}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>🏆 Your Badges</DialogTitle>
+                  <DialogTitle>🏆 Your Achievements</DialogTitle>
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-3">
                   {Object.keys(BADGES).map((badgeId) => (
                     <Badge
                       key={badgeId}
                       badgeId={badgeId}
-                      earned={habitData.badges.includes(badgeId)}
+                      earned={getAllBadges().includes(badgeId)}
                     />
                   ))}
                 </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={showSettings} onOpenChange={setShowSettings}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>⚙️ Settings</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="habit-name">Habit Name</Label>
-                    <Input
-                      id="habit-name"
-                      value={newHabitName}
-                      onChange={(e) => setNewHabitName(e.target.value)}
-                      placeholder="e.g., Exercise, Study, Meditate"
-                    />
-                  </div>
-                  <Button onClick={handleUpdateHabitName} className="w-full">
-                    Save Changes
-                  </Button>
-                </div>
+                {getAllBadges().length === 0 && (
+                  <p className="text-center text-muted-foreground py-4">
+                    Complete habits to earn badges! 🎯
+                  </p>
+                )}
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
-        {/* Setup Prompt */}
-        {needsHabitName && (
-          <Card className="border-2 border-game-orange animate-bounce-in">
-            <CardHeader>
-              <CardTitle className="text-center">
-                Welcome to Habit Quest! 🎯
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-center text-muted-foreground">
-                First, let's set up your habit to track:
-              </p>
-              <div>
-                <Label htmlFor="initial-habit">
-                  What habit do you want to build?
-                </Label>
-                <Input
-                  id="initial-habit"
-                  value={newHabitName}
-                  onChange={(e) => setNewHabitName(e.target.value)}
-                  placeholder="e.g., Exercise, Study, Meditate"
-                />
-              </div>
-              <Button onClick={handleUpdateHabitName} className="w-full">
-                Start My Journey! 🚀
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Main Habit Card */}
-        {!needsHabitName && (
-          <>
-            <Card className="border-2 border-border">
-              <CardHeader>
-                <CardTitle className="text-center text-xl">
-                  Did you complete your
-                  <br />
-                  <span className="text-2xl text-primary font-bold">
-                    {habitData.name}
-                  </span>
-                  <br />
-                  today?
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <StreakDisplay
-                  streak={habitData.currentStreak}
-                  bestStreak={habitData.bestStreak}
-                />
-
-                {!checkedInToday ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      onClick={handleCompleteHabit}
-                      className="h-16 text-lg bg-success hover:bg-success/90"
-                    >
-                      ✅ Yes!
-                    </Button>
-                    <Button
-                      onClick={handleSkipHabit}
-                      variant="outline"
-                      className="h-16 text-lg border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    >
-                      ❌ No
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center p-6 bg-muted/50 rounded-lg">
-                    <div className="text-2xl mb-2">🎉</div>
-                    <p className="font-medium">Already checked in today!</p>
-                    <p className="text-sm text-muted-foreground">
-                      Come back tomorrow to continue your streak
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Progress Cards */}
-            <div className="grid grid-cols-1 gap-4">
-              <Card>
-                <CardContent className="p-4">
-                  <ProgressBar
-                    current={habitData.currentStreak}
-                    target={7}
-                    label="Week Progress"
-                    color="bg-game-orange"
-                  />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <ProgressBar
-                    current={habitData.currentStreak}
-                    target={30}
-                    label="Month Challenge"
-                    color="bg-game-purple"
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Badges */}
-            {habitData.badges.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    🏆 Recent Achievements
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-2">
-                    {habitData.badges.slice(-3).map((badgeId) => (
-                      <Badge key={badgeId} badgeId={badgeId} earned />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">📊 Your Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4 text-center">
+        {/* Stats Overview */}
+        {appData.habits.length > 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-2xl font-bold text-game-blue">
-                    {habitData.totalCompletions}
+                  <div className="text-2xl font-bold text-game-purple">
+                    {stats.totalCompletions}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Total Completed
@@ -329,16 +300,105 @@ export default function Index() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-game-gold">
-                    {habitData.badges.length}
+                    {stats.activeStreaks}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Active Streaks
+                  </div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-game-green">
+                    {stats.totalBadges}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Badges Earned
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </>
+              </div>
+            </CardContent>
+          </Card>
         )}
+
+        {/* Habits List */}
+        {appData.habits.length === 0 ? (
+          <Card className="border-2 border-dashed border-muted-foreground/25">
+            <CardContent className="text-center py-12">
+              <div className="text-4xl mb-4">🎯</div>
+              <h3 className="text-lg font-semibold mb-2">No habits yet!</h3>
+              <p className="text-muted-foreground mb-6">
+                Create your first habit to start your journey
+              </p>
+              <Button onClick={() => setShowHabitForm(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Your First Habit
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {appData.habits.map((habit) => (
+              <HabitCard
+                key={habit.id}
+                habit={habit}
+                onComplete={handleCompleteHabit}
+                onSkip={handleSkipHabit}
+                onEdit={handleEditHabit}
+                onDelete={(id) => setDeleteConfirm(id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Floating Add Button */}
+        {appData.habits.length > 0 && (
+          <div className="fixed bottom-6 right-6">
+            <Button
+              onClick={() => setShowHabitForm(true)}
+              size="lg"
+              className="rounded-full h-14 w-14 shadow-lg gap-2"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
+
+        {/* Habit Form Dialog */}
+        <HabitForm
+          open={showHabitForm}
+          onOpenChange={(open) => {
+            setShowHabitForm(open);
+            if (!open) setEditingHabit(null);
+          }}
+          habit={editingHabit}
+          onSave={editingHabit ? handleUpdateHabit : handleCreateHabit}
+        />
+
+        {/* Delete Confirmation */}
+        <AlertDialog
+          open={!!deleteConfirm}
+          onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Habit?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete this habit and all its data. This
+                action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() =>
+                  deleteConfirm && handleDeleteHabit(deleteConfirm)
+                }
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
