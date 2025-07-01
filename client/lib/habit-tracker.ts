@@ -1,8 +1,10 @@
 import {
-  HabitData,
-  saveHabitData,
+  Habit,
+  AppData,
+  saveAppData,
   getTodayString,
   calculateStreakReset,
+  updateHabit,
 } from "./storage";
 
 export const BADGES = {
@@ -26,37 +28,40 @@ export const BADGES = {
 } as const;
 
 export const checkBadgeEarned = (
-  oldData: HabitData,
-  newData: HabitData,
+  oldHabit: Habit,
+  newHabit: Habit,
 ): string[] => {
   const newBadges: string[] = [];
 
   // First day badge
-  if (newData.currentStreak === 1 && !oldData.badges.includes("first-day")) {
+  if (newHabit.currentStreak === 1 && !oldHabit.badges.includes("first-day")) {
     newBadges.push("first-day");
   }
 
   // Week warrior badge
-  if (newData.currentStreak >= 7 && !oldData.badges.includes("week-warrior")) {
+  if (
+    newHabit.currentStreak >= 7 &&
+    !oldHabit.badges.includes("week-warrior")
+  ) {
     newBadges.push("week-warrior");
   }
 
   // Champion badge
-  if (newData.currentStreak >= 30 && !oldData.badges.includes("champion")) {
+  if (newHabit.currentStreak >= 30 && !oldHabit.badges.includes("champion")) {
     newBadges.push("champion");
   }
 
   // Legend badge
-  if (newData.currentStreak >= 100 && !oldData.badges.includes("legend")) {
+  if (newHabit.currentStreak >= 100 && !oldHabit.badges.includes("legend")) {
     newBadges.push("legend");
   }
 
   // Comeback badge (started a new streak after having one before)
   if (
-    newData.currentStreak === 1 &&
-    oldData.bestStreak > 0 &&
-    oldData.currentStreak === 0 &&
-    !oldData.badges.includes("comeback-king")
+    newHabit.currentStreak === 1 &&
+    oldHabit.bestStreak > 0 &&
+    oldHabit.currentStreak === 0 &&
+    !oldHabit.badges.includes("comeback-king")
   ) {
     newBadges.push("comeback-king");
   }
@@ -64,58 +69,60 @@ export const checkBadgeEarned = (
   return newBadges;
 };
 
-export const completeHabitToday = (currentData: HabitData): HabitData => {
+export const completeHabitToday = (
+  appData: AppData,
+  habitId: string,
+): AppData => {
+  const habit = appData.habits.find((h) => h.id === habitId);
+  if (!habit) return appData;
+
   const today = getTodayString();
 
   // Check if streak should reset due to missing days
-  const shouldReset = calculateStreakReset(currentData);
+  const shouldReset = calculateStreakReset(habit);
 
-  const newStreak = shouldReset ? 1 : currentData.currentStreak + 1;
+  const newStreak = shouldReset ? 1 : habit.currentStreak + 1;
 
-  const newData: HabitData = {
-    ...currentData,
+  const updatedHabit: Habit = {
+    ...habit,
     currentStreak: newStreak,
-    bestStreak: Math.max(currentData.bestStreak, newStreak),
+    bestStreak: Math.max(habit.bestStreak, newStreak),
     lastCheckIn: today,
-    totalCompletions: currentData.totalCompletions + 1,
+    totalCompletions: habit.totalCompletions + 1,
     history: [
-      ...currentData.history.filter((h) => h.date !== today),
+      ...habit.history.filter((h) => h.date !== today),
       { date: today, completed: true },
     ].sort((a, b) => b.date.localeCompare(a.date)),
   };
 
   // Check for new badges
-  const newBadges = checkBadgeEarned(currentData, newData);
-  newData.badges = [...currentData.badges, ...newBadges];
+  const newBadges = checkBadgeEarned(habit, updatedHabit);
+  updatedHabit.badges = [...habit.badges, ...newBadges];
 
-  saveHabitData(newData);
-  return newData;
+  const newAppData = updateHabit(appData, habitId, updatedHabit);
+  saveAppData(newAppData);
+  return newAppData;
 };
 
-export const skipHabitToday = (currentData: HabitData): HabitData => {
+export const skipHabitToday = (appData: AppData, habitId: string): AppData => {
+  const habit = appData.habits.find((h) => h.id === habitId);
+  if (!habit) return appData;
+
   const today = getTodayString();
 
-  const newData: HabitData = {
-    ...currentData,
+  const updatedHabit: Habit = {
+    ...habit,
     currentStreak: 0,
     lastCheckIn: today,
     history: [
-      ...currentData.history.filter((h) => h.date !== today),
+      ...habit.history.filter((h) => h.date !== today),
       { date: today, completed: false },
     ].sort((a, b) => b.date.localeCompare(a.date)),
   };
 
-  saveHabitData(newData);
-  return newData;
-};
-
-export const updateHabitName = (
-  currentData: HabitData,
-  name: string,
-): HabitData => {
-  const newData = { ...currentData, name };
-  saveHabitData(newData);
-  return newData;
+  const newAppData = updateHabit(appData, habitId, updatedHabit);
+  saveAppData(newAppData);
+  return newAppData;
 };
 
 export const getMotivationalMessage = (streak: number): string => {
