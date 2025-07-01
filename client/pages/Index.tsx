@@ -21,8 +21,9 @@ import {
   getMotivationalMessage,
   BADGES,
 } from "@/lib/habit-tracker";
-import { Settings, Trophy } from "lucide-react";
+import { Settings, Trophy, Calendar } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { requestNotificationPermission } from "@/lib/notifications";
 
 export default function Index() {
   const [habitData, setHabitData] = useState<HabitData | null>(null);
@@ -30,12 +31,20 @@ export default function Index() {
   const [newHabitName, setNewHabitName] = useState("");
   const [showBadges, setShowBadges] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     const data = loadHabitData();
     setHabitData(data);
     setCheckedInToday(hasCheckedInToday(data));
     setNewHabitName(data.name);
+
+    // Request notification permission
+    requestNotificationPermission().then((granted) => {
+      if (granted) {
+        console.log("Notifications enabled");
+      }
+    });
   }, []);
 
   const handleCompleteHabit = () => {
@@ -97,6 +106,40 @@ export default function Index() {
             Habit Quest
           </h1>
           <div className="flex gap-2">
+            <Dialog open={showHistory} onOpenChange={setShowHistory}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Calendar className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>📅 Your History</DialogTitle>
+                </DialogHeader>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {habitData.history.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-4">
+                      No history yet. Start your first day!
+                    </p>
+                  ) : (
+                    habitData.history.slice(0, 30).map((entry) => (
+                      <div
+                        key={entry.date}
+                        className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                      >
+                        <span className="text-sm">
+                          {new Date(entry.date).toLocaleDateString()}
+                        </span>
+                        <span className="text-lg">
+                          {entry.completed ? "✅" : "❌"}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Dialog open={showBadges} onOpenChange={setShowBadges}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="icon">
