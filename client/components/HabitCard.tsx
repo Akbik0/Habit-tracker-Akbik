@@ -162,6 +162,11 @@ export default function HabitCard({
             </div>
           </div>
         </div>
+
+        {/* Countdown Timer */}
+        <div className="text-center border-t pt-3 mt-3">
+          <CountdownTimer isCompleted={checkedIn} />
+        </div>
       </CardContent>
     </Card>
   );
