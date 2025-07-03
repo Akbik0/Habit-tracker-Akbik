@@ -92,23 +92,62 @@ export const saveAppData = (data: AppData): void => {
   }
 };
 
-export const getTodayString = (): string => {
-  return new Date().toISOString().split("T")[0];
+export const getTodayStringEST = (): string => {
+  const now = new Date();
+  const estOffset = -5; // EST is UTC-5 (or UTC-4 during DST)
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const est = new Date(utc + estOffset * 3600000);
+  return est.toISOString().split("T")[0];
+};
+
+export const getCurrentMonthEST = (): string => {
+  const now = new Date();
+  const estOffset = -5;
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const est = new Date(utc + estOffset * 3600000);
+  return `${est.getFullYear()}-${(est.getMonth() + 1).toString().padStart(2, "0")}`;
 };
 
 export const hasCheckedInToday = (habit: Habit): boolean => {
-  return habit.lastCheckIn === getTodayString();
+  return habit.lastCheckIn === getTodayStringEST();
 };
 
 export const calculateStreakReset = (habit: Habit): boolean => {
   if (!habit.lastCheckIn) return false;
 
-  const today = new Date();
-  const lastCheckIn = new Date(habit.lastCheckIn);
-  const diffTime = today.getTime() - lastCheckIn.getTime();
+  const todayEST = getTodayStringEST();
+  const lastCheckInDate = new Date(habit.lastCheckIn + "T00:00:00");
+  const todayDate = new Date(todayEST + "T00:00:00");
+
+  const diffTime = todayDate.getTime() - lastCheckInDate.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
   return diffDays > 1;
+};
+
+export const canUseMonthlySkip = (habit: Habit): boolean => {
+  const currentMonth = getCurrentMonthEST();
+
+  // Reset skip count if we're in a new month
+  if (habit.lastSkipResetMonth !== currentMonth) {
+    return true;
+  }
+
+  return habit.monthlySkipsUsed < 1;
+};
+
+export const resetMonthlySkipIfNeeded = (habit: Habit): Habit => {
+  const currentMonth = getCurrentMonthEST();
+
+  if (habit.lastSkipResetMonth !== currentMonth) {
+    return {
+      ...habit,
+      monthlySkipsUsed: 0,
+      lastSkipResetMonth: currentMonth,
+    };
+  }
+
+  return habit;
 };
 
 export const addHabit = (
