@@ -105,7 +105,16 @@ export const completeHabitToday = (
   const newBadges = checkBadgeEarned(habitWithResetSkips, updatedHabit);
   updatedHabit.badges = [...habitWithResetSkips.badges, ...newBadges];
 
-  const newAppData = updateHabit(appData, habitId, updatedHabit);
+  let newAppData = updateHabit(appData, habitId, updatedHabit);
+
+  // Update all-time longest streak if this is a new record
+  if (newStreak > newAppData.allTimeLongestStreak) {
+    newAppData = {
+      ...newAppData,
+      allTimeLongestStreak: newStreak,
+    };
+  }
+
   saveAppData(newAppData);
   return newAppData;
 };
