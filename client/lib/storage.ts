@@ -78,7 +78,19 @@ export const loadAppData = (): AppData => {
       return { habits: [migratedHabit], version: 1 };
     }
 
-    return { habits: data.habits || [], version: data.version || 1 };
+    // Migrate existing habits to include new fields
+    const migratedHabits = (data.habits || []).map((habit: any) => ({
+      ...habit,
+      monthlySkipsUsed: habit.monthlySkipsUsed ?? 0,
+      lastSkipResetMonth: habit.lastSkipResetMonth ?? getCurrentMonthEST(),
+      history: (habit.history || []).map((entry: any) => ({
+        date: entry.date,
+        completed: entry.completed,
+        skipped: entry.skipped ?? false,
+      })),
+    }));
+
+    return { habits: migratedHabits, version: data.version || 1 };
   } catch {
     return { habits: [], version: 1 };
   }
