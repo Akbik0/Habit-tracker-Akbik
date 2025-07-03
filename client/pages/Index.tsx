@@ -298,7 +298,24 @@ export default function Index() {
         {/* Stats Overview */}
         {appData.habits.length > 0 && (
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 space-y-4">
+              {/* All-Time Record - Prominent Display */}
+              {appData.allTimeLongestStreak > 0 && (
+                <div className="text-center p-4 bg-gradient-to-r from-game-gold/20 to-game-orange/20 rounded-lg border border-game-gold/30">
+                  <div className="text-3xl font-bold text-game-gold flex items-center justify-center gap-2">
+                    <span>👑</span>
+                    <span>{appData.allTimeLongestStreak}</span>
+                  </div>
+                  <div className="text-sm font-medium text-game-gold/80">
+                    Your All-Time Longest Streak
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Personal record across all habits
+                  </div>
+                </div>
+              )}
+
+              {/* Regular Stats */}
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold text-game-purple">
@@ -309,7 +326,7 @@ export default function Index() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-game-gold">
+                  <div className="text-2xl font-bold text-game-blue">
                     {stats.activeStreaks}
                   </div>
                   <div className="text-sm text-muted-foreground">
