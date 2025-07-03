@@ -89,20 +89,30 @@ export default function Index() {
     }
   };
 
-  const handleSkipHabit = (habitId: string) => {
+  const handleSkipHabit = (
+    habitId: string,
+    useMonthlySkip: boolean = false,
+  ) => {
     if (!appData) return;
 
     const habit = appData.habits.find((h) => h.id === habitId);
     if (!habit) return;
 
-    const newData = skipHabitToday(appData, habitId);
+    const newData = skipHabitToday(appData, habitId, useMonthlySkip);
     setAppData(newData);
 
-    toast({
-      title: "No worries!",
-      description: `Tomorrow is a fresh start for ${habit.name}! 🌅`,
-      variant: "destructive",
-    });
+    if (useMonthlySkip) {
+      toast({
+        title: "🛡️ Free skip used!",
+        description: `Your streak is protected for ${habit.name}!`,
+      });
+    } else {
+      toast({
+        title: "No worries!",
+        description: `Tomorrow is a fresh start for ${habit.name}! 🌅`,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCreateHabit = (habitData: {
