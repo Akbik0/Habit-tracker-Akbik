@@ -2,9 +2,12 @@ import {
   Habit,
   AppData,
   saveAppData,
-  getTodayString,
+  getTodayStringEST,
   calculateStreakReset,
   updateHabit,
+  canUseMonthlySkip,
+  resetMonthlySkipIfNeeded,
+  getCurrentMonthEST,
 } from "./storage";
 
 export const BADGES = {
@@ -76,49 +79,75 @@ export const completeHabitToday = (
   const habit = appData.habits.find((h) => h.id === habitId);
   if (!habit) return appData;
 
-  const today = getTodayString();
+  const today = getTodayStringEST();
+
+  // Reset monthly skips if needed
+  const habitWithResetSkips = resetMonthlySkipIfNeeded(habit);
 
   // Check if streak should reset due to missing days
-  const shouldReset = calculateStreakReset(habit);
+  const shouldReset = calculateStreakReset(habitWithResetSkips);
 
-  const newStreak = shouldReset ? 1 : habit.currentStreak + 1;
+  const newStreak = shouldReset ? 1 : habitWithResetSkips.currentStreak + 1;
 
   const updatedHabit: Habit = {
-    ...habit,
+    ...habitWithResetSkips,
     currentStreak: newStreak,
-    bestStreak: Math.max(habit.bestStreak, newStreak),
+    bestStreak: Math.max(habitWithResetSkips.bestStreak, newStreak),
     lastCheckIn: today,
-    totalCompletions: habit.totalCompletions + 1,
+    totalCompletions: habitWithResetSkips.totalCompletions + 1,
     history: [
-      ...habit.history.filter((h) => h.date !== today),
+      ...habitWithResetSkips.history.filter((h) => h.date !== today),
       { date: today, completed: true },
     ].sort((a, b) => b.date.localeCompare(a.date)),
   };
 
   // Check for new badges
-  const newBadges = checkBadgeEarned(habit, updatedHabit);
-  updatedHabit.badges = [...habit.badges, ...newBadges];
+  const newBadges = checkBadgeEarned(habitWithResetSkips, updatedHabit);
+  updatedHabit.badges = [...habitWithResetSkips.badges, ...newBadges];
 
   const newAppData = updateHabit(appData, habitId, updatedHabit);
   saveAppData(newAppData);
   return newAppData;
 };
 
-export const skipHabitToday = (appData: AppData, habitId: string): AppData => {
+export const skipHabitToday = (
+  appData: AppData,
+  habitId: string,
+  useMonthlySkip: boolean = false,
+): AppData => {
   const habit = appData.habits.find((h) => h.id === habitId);
   if (!habit) return appData;
 
-  const today = getTodayString();
+  const today = getTodayStringEST();
 
-  const updatedHabit: Habit = {
-    ...habit,
-    currentStreak: 0,
-    lastCheckIn: today,
-    history: [
-      ...habit.history.filter((h) => h.date !== today),
-      { date: today, completed: false },
-    ].sort((a, b) => b.date.localeCompare(a.date)),
-  };
+  // Reset monthly skips if needed
+  const habitWithResetSkips = resetMonthlySkipIfNeeded(habit);
+
+  let updatedHabit: Habit;
+
+  if (useMonthlySkip && canUseMonthlySkip(habitWithResetSkips)) {
+    // Use monthly skip - keep streak but mark as skipped
+    updatedHabit = {
+      ...habitWithResetSkips,
+      lastCheckIn: today,
+      monthlySkipsUsed: habitWithResetSkips.monthlySkipsUsed + 1,
+      history: [
+        ...habitWithResetSkips.history.filter((h) => h.date !== today),
+        { date: today, completed: false, skipped: true },
+      ].sort((a, b) => b.date.localeCompare(a.date)),
+    };
+  } else {
+    // Regular skip - reset streak
+    updatedHabit = {
+      ...habitWithResetSkips,
+      currentStreak: 0,
+      lastCheckIn: today,
+      history: [
+        ...habitWithResetSkips.history.filter((h) => h.date !== today),
+        { date: today, completed: false },
+      ].sort((a, b) => b.date.localeCompare(a.date)),
+    };
+  }
 
   const newAppData = updateHabit(appData, habitId, updatedHabit);
   saveAppData(newAppData);
