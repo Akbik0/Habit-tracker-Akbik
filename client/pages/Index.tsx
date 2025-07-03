@@ -45,6 +45,7 @@ import {
   scheduleHabitReminders,
   showDemoNotification,
 } from "@/lib/notifications";
+import { getAppInfo } from "@/lib/version";
 
 export default function Index() {
   const [appData, setAppData] = useState<AppData | null>(null);
@@ -426,6 +427,14 @@ export default function Index() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* App Footer */}
+        <div className="text-center py-6 mt-8 border-t border-border/50">
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div>Habit Quest v{getAppInfo().version}</div>
+            <div>Last updated: {getAppInfo().lastUpdated}</div>
+          </div>
+        </div>
       </div>
     </div>
   );
