@@ -10,6 +10,7 @@ import { MoreVertical, Edit, Trash2, Bell, Shield } from "lucide-react";
 import { Habit, hasCheckedInToday, canUseMonthlySkip } from "@/lib/storage";
 import { getStreakColor, getMotivationalMessage } from "@/lib/habit-tracker";
 import { cn } from "@/lib/utils";
+import CountdownTimer from "./CountdownTimer";
 
 interface HabitCardProps {
   habit: Habit;
