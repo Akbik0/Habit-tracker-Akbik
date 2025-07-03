@@ -8,11 +8,14 @@ export interface Habit {
   history: Array<{
     date: string;
     completed: boolean;
+    skipped?: boolean;
   }>;
   badges: string[];
   reminderTime: string;
   createdAt: string;
   color: string;
+  monthlySkipsUsed: number;
+  lastSkipResetMonth: string;
 }
 
 export interface AppData {
@@ -34,6 +37,8 @@ export const createDefaultHabit = (name: string, color?: string): Habit => ({
   reminderTime: "19:00",
   createdAt: new Date().toISOString(),
   color: color || getRandomHabitColor(),
+  monthlySkipsUsed: 0,
+  lastSkipResetMonth: getCurrentMonthEST(),
 });
 
 const HABIT_COLORS = [
