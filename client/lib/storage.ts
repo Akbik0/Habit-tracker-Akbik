@@ -21,6 +21,7 @@ export interface Habit {
 export interface AppData {
   habits: Habit[];
   version: number;
+  allTimeLongestStreak: number;
 }
 
 const STORAGE_KEY = "habit-tracker-data";
@@ -59,7 +60,7 @@ export const getRandomHabitColor = (): string => {
 export const loadAppData = (): AppData => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return { habits: [], version: 1 };
+    if (!stored) return { habits: [], version: 1, allTimeLongestStreak: 0 };
 
     const data = JSON.parse(stored) as AppData;
 
@@ -75,7 +76,11 @@ export const loadAppData = (): AppData => {
       migratedHabit.badges = oldData.badges || [];
       migratedHabit.reminderTime = oldData.reminderTime || "19:00";
 
-      return { habits: [migratedHabit], version: 1 };
+      return {
+        habits: [migratedHabit],
+        version: 1,
+        allTimeLongestStreak: oldData.bestStreak || 0,
+      };
     }
 
     // Migrate existing habits to include new fields
@@ -90,7 +95,16 @@ export const loadAppData = (): AppData => {
       })),
     }));
 
-    return { habits: migratedHabits, version: data.version || 1 };
+    // Calculate all-time longest streak from existing data if not present
+    const allTimeLongestStreak =
+      data.allTimeLongestStreak ??
+      Math.max(0, ...migratedHabits.map((habit: any) => habit.bestStreak || 0));
+
+    return {
+      habits: migratedHabits,
+      version: data.version || 1,
+      allTimeLongestStreak,
+    };
   } catch {
     return { habits: [], version: 1 };
   }
