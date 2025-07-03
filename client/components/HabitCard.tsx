@@ -6,15 +6,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, Bell } from "lucide-react";
-import { Habit, hasCheckedInToday } from "@/lib/storage";
+import { MoreVertical, Edit, Trash2, Bell, Shield } from "lucide-react";
+import { Habit, hasCheckedInToday, canUseMonthlySkip } from "@/lib/storage";
 import { getStreakColor, getMotivationalMessage } from "@/lib/habit-tracker";
 import { cn } from "@/lib/utils";
 
 interface HabitCardProps {
   habit: Habit;
   onComplete: (habitId: string) => void;
-  onSkip: (habitId: string) => void;
+  onSkip: (habitId: string, useMonthlySkip?: boolean) => void;
   onEdit: (habit: Habit) => void;
   onDelete: (habitId: string) => void;
 }
@@ -68,39 +68,70 @@ export default function HabitCard({
 
       <CardContent className="space-y-4">
         {/* Streak Display */}
-        <div className="text-center">
-          <div
-            className={cn("text-4xl font-bold transition-colors", streakColor)}
-          >
-            {habit.currentStreak}
+        <div className="text-center space-y-1">
+          <div>
+            <div
+              className={cn(
+                "text-4xl font-bold transition-colors",
+                streakColor,
+              )}
+            >
+              {habit.currentStreak}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              current {habit.currentStreak === 1 ? "day" : "days"}
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {habit.currentStreak === 1 ? "day" : "days"}
-          </div>
-          {habit.bestStreak > 0 && habit.bestStreak !== habit.currentStreak && (
-            <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
-              <span>🏆</span>
-              <span>Best: {habit.bestStreak}</span>
+
+          {habit.bestStreak > 0 && (
+            <div className="text-center p-2 bg-game-gold/10 rounded-lg">
+              <div className="text-lg font-bold text-game-gold flex items-center justify-center gap-1">
+                <span>🏆</span>
+                <span>{habit.bestStreak}</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                longest streak
+              </div>
             </div>
           )}
         </div>
 
         {/* Action Buttons */}
         {!checkedIn ? (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-2">
             <Button
               onClick={() => onComplete(habit.id)}
-              className="h-12 bg-success hover:bg-success/90"
+              className="w-full h-12 bg-success hover:bg-success/90"
             >
-              ✅ Done
+              ✅ Complete Habit
             </Button>
-            <Button
-              onClick={() => onSkip(habit.id)}
-              variant="outline"
-              className="h-12 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-            >
-              ❌ Skip
-            </Button>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={() => onSkip(habit.id, false)}
+                variant="outline"
+                className="h-10 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              >
+                ❌ Skip
+              </Button>
+
+              {canUseMonthlySkip(habit) && (
+                <Button
+                  onClick={() => onSkip(habit.id, true)}
+                  variant="outline"
+                  className="h-10 border-game-orange text-game-orange hover:bg-game-orange hover:text-white"
+                >
+                  <Shield className="h-3 w-3 mr-1" />
+                  Free Skip
+                </Button>
+              )}
+            </div>
+
+            {canUseMonthlySkip(habit) && (
+              <div className="text-xs text-center text-muted-foreground">
+                🛡️ {1 - habit.monthlySkipsUsed} free skip remaining this month
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center p-3 bg-muted/50 rounded-lg">
