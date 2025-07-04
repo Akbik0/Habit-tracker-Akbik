@@ -163,9 +163,20 @@ export default function HabitCard({
           </div>
         </div>
 
-        {/* Countdown Timer */}
-        <div className="text-center border-t pt-3 mt-3">
-          <CountdownTimer isCompleted={checkedIn} />
+        {/* Last Check-in & Countdown Timer */}
+        <div className="border-t pt-3 mt-3 space-y-2">
+          {habit.lastCheckIn && (
+            <div className="text-center text-xs text-muted-foreground">
+              <span className="font-medium">Last checked in:</span>
+              <br />
+              {new Date(habit.lastCheckIn + "T00:00:00").toLocaleDateString()}
+              {checkedIn && <span className="text-success ml-1">(Today)</span>}
+            </div>
+          )}
+
+          <div className="text-center">
+            <CountdownTimer isCompleted={checkedIn} />
+          </div>
         </div>
       </CardContent>
     </Card>
