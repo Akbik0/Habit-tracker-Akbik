@@ -7,23 +7,30 @@ export interface TimeUntilReset {
 
 export const getTimeUntilMidnightEST = (): TimeUntilReset => {
   const now = new Date();
+
+  // Get current EST time
   const currentEST = new Date(
     now.toLocaleString("en-US", { timeZone: "America/New_York" }),
   );
 
-  // Get tomorrow at midnight EST
-  const tomorrowMidnightEST = new Date(currentEST);
-  tomorrowMidnightEST.setDate(tomorrowMidnightEST.getDate() + 1);
-  tomorrowMidnightEST.setHours(0, 1, 0, 0); // 12:01 AM
+  // Calculate tomorrow midnight in EST
+  const tomorrowEST = new Date(currentEST);
+  tomorrowEST.setDate(tomorrowEST.getDate() + 1);
+  tomorrowEST.setHours(0, 0, 0, 0);
 
-  // Convert back to local time for calculation
-  const tomorrowMidnightLocal = new Date(
-    tomorrowMidnightEST.toLocaleString("en-US", {
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    }),
-  );
+  // Get the UTC time for tomorrow midnight EST
+  const estOffset = tomorrowEST.getTimezoneOffset();
+  const nyOffset = new Date().toLocaleString("en-US", {
+    timeZone: "America/New_York",
+  });
+  const nyTime = new Date(nyOffset);
+  const offsetDiff = now.getTimezoneOffset() - nyTime.getTimezoneOffset();
 
-  const totalMs = tomorrowMidnightLocal.getTime() - now.getTime();
+  // Calculate time difference more reliably
+  const currentESTMs = now.getTime() + offsetDiff * 60000;
+  const tomorrowMidnightMs = tomorrowEST.getTime();
+
+  const totalMs = tomorrowMidnightMs - currentESTMs;
 
   if (totalMs <= 0) {
     return { hours: 0, minutes: 0, seconds: 0, totalMs: 0 };
