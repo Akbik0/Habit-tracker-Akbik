@@ -1,7 +1,7 @@
 // App version and build information
 export const APP_VERSION = "2.1.2";
 export const BUILD_DATE = "2025-07-04";
-export const LAST_UPDATED = new Date("2025-07-04T05:03:00Z").toLocaleString(
+export const LAST_UPDATED = new Date("2025-07-04T17:03:00Z").toLocaleString(
   "en-US",
   {
     timeZone: "America/New_York",
