@@ -119,29 +119,31 @@ export const saveAppData = (data: AppData): void => {
 };
 
 export const getTodayStringEST = (): string => {
-  // Create a new date in EST timezone
+  // Get current time in EST/EDT timezone
   const now = new Date();
-  const estFormatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
 
-  return estFormatter.format(now);
+  // Convert to EST using proper timezone offset
+  // This handles both EST (-5) and EDT (-4) automatically
+  const estTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/New_York" }),
+  );
+
+  // Format as YYYY-MM-DD
+  const year = estTime.getFullYear();
+  const month = String(estTime.getMonth() + 1).padStart(2, "0");
+  const day = String(estTime.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 };
 
 export const getCurrentMonthEST = (): string => {
   const now = new Date();
-  const estFormatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-  });
+  const estTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/New_York" }),
+  );
 
-  const parts = estFormatter.formatToParts(now);
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
+  const year = estTime.getFullYear();
+  const month = String(estTime.getMonth() + 1).padStart(2, "0");
 
   return `${year}-${month}`;
 };
