@@ -89,15 +89,17 @@ export const completeHabitToday = (
 
   const newStreak = shouldReset ? 1 : habitWithResetSkips.currentStreak + 1;
 
+  const now = new Date();
   const updatedHabit: Habit = {
     ...habitWithResetSkips,
     currentStreak: newStreak,
     bestStreak: Math.max(habitWithResetSkips.bestStreak, newStreak),
     lastCheckIn: today,
+    lastCheckInTimestamp: now.toISOString(),
     totalCompletions: habitWithResetSkips.totalCompletions + 1,
     history: [
       ...habitWithResetSkips.history.filter((h) => h.date !== today),
-      { date: today, completed: true },
+      { date: today, completed: true, timestamp: now.toISOString() },
     ].sort((a, b) => b.date.localeCompare(a.date)),
   };
 
@@ -134,15 +136,23 @@ export const skipHabitToday = (
 
   let updatedHabit: Habit;
 
+  const now = new Date();
+
   if (useMonthlySkip && canUseMonthlySkip(habitWithResetSkips)) {
     // Use monthly skip - keep streak but mark as skipped
     updatedHabit = {
       ...habitWithResetSkips,
       lastCheckIn: today,
+      lastCheckInTimestamp: now.toISOString(),
       monthlySkipsUsed: habitWithResetSkips.monthlySkipsUsed + 1,
       history: [
         ...habitWithResetSkips.history.filter((h) => h.date !== today),
-        { date: today, completed: false, skipped: true },
+        {
+          date: today,
+          completed: false,
+          skipped: true,
+          timestamp: now.toISOString(),
+        },
       ].sort((a, b) => b.date.localeCompare(a.date)),
     };
   } else {
@@ -151,9 +161,10 @@ export const skipHabitToday = (
       ...habitWithResetSkips,
       currentStreak: 0,
       lastCheckIn: today,
+      lastCheckInTimestamp: now.toISOString(),
       history: [
         ...habitWithResetSkips.history.filter((h) => h.date !== today),
-        { date: today, completed: false },
+        { date: today, completed: false, timestamp: now.toISOString() },
       ].sort((a, b) => b.date.localeCompare(a.date)),
     };
   }
