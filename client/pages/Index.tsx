@@ -264,6 +264,20 @@ export default function Index() {
           </div>
 
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const debug = getDebugInfo();
+                const today = getTodayStringEST();
+                alert(
+                  `Debug Info:\nEST Date: ${today}\nEST Time: ${debug.currentESTTime}\nLocal Time: ${debug.currentLocalTime}\n\nFirst habit last check-in: ${appData.habits[0]?.lastCheckIn || "none"}`,
+                );
+              }}
+            >
+              Debug
+            </Button>
+
             <Dialog open={showBadges} onOpenChange={setShowBadges}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="icon" className="relative">
