@@ -33,6 +33,8 @@ import {
   deleteHabit,
   Habit,
   AppData,
+  getDebugInfo,
+  getTodayStringEST,
 } from "@/lib/storage";
 import {
   completeHabitToday,
