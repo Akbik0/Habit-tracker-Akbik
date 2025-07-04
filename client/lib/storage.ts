@@ -119,20 +119,31 @@ export const saveAppData = (data: AppData): void => {
 };
 
 export const getTodayStringEST = (): string => {
-  // Use proper timezone handling with Intl API
+  // Create a new date in EST timezone
   const now = new Date();
-  const estDate = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/New_York" }),
-  );
-  return estDate.toISOString().split("T")[0];
+  const estFormatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  return estFormatter.format(now);
 };
 
 export const getCurrentMonthEST = (): string => {
   const now = new Date();
-  const estDate = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/New_York" }),
-  );
-  return `${estDate.getFullYear()}-${(estDate.getMonth() + 1).toString().padStart(2, "0")}`;
+  const estFormatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+  });
+
+  const parts = estFormatter.formatToParts(now);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+
+  return `${year}-${month}`;
 };
 
 export const hasCheckedInToday = (habit: Habit): boolean => {
