@@ -4,11 +4,13 @@ export interface Habit {
   currentStreak: number;
   bestStreak: number;
   lastCheckIn: string | null;
+  lastCheckInTimestamp: string | null;
   totalCompletions: number;
   history: Array<{
     date: string;
     completed: boolean;
     skipped?: boolean;
+    timestamp?: string;
   }>;
   badges: string[];
   reminderTime: string;
@@ -32,6 +34,7 @@ export const createDefaultHabit = (name: string, color?: string): Habit => ({
   currentStreak: 0,
   bestStreak: 0,
   lastCheckIn: null,
+  lastCheckInTimestamp: null,
   totalCompletions: 0,
   history: [],
   badges: [],
@@ -88,10 +91,12 @@ export const loadAppData = (): AppData => {
       ...habit,
       monthlySkipsUsed: habit.monthlySkipsUsed ?? 0,
       lastSkipResetMonth: habit.lastSkipResetMonth ?? getCurrentMonthEST(),
+      lastCheckInTimestamp: habit.lastCheckInTimestamp ?? null,
       history: (habit.history || []).map((entry: any) => ({
         date: entry.date,
         completed: entry.completed,
         skipped: entry.skipped ?? false,
+        timestamp: entry.timestamp ?? null,
       })),
     }));
 
