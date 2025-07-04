@@ -165,11 +165,18 @@ export default function HabitCard({
 
         {/* Last Check-in & Countdown Timer */}
         <div className="border-t pt-3 mt-3 space-y-2">
-          {habit.lastCheckIn && (
+          {habit.lastCheckInTimestamp && (
             <div className="text-center text-xs text-muted-foreground">
               <span className="font-medium">Last checked in:</span>
               <br />
-              {new Date(habit.lastCheckIn + "T00:00:00").toLocaleDateString()}
+              {new Date(
+                habit.lastCheckInTimestamp,
+              ).toLocaleDateString()} at{" "}
+              {new Date(habit.lastCheckInTimestamp).toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              })}
               {checkedIn && <span className="text-success ml-1">(Today)</span>}
             </div>
           )}
