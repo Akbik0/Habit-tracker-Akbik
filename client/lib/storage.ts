@@ -190,6 +190,24 @@ export const resetMonthlySkipIfNeeded = (habit: Habit): Habit => {
   return habit;
 };
 
+// Debug function to help troubleshoot timezone issues
+export const getDebugInfo = () => {
+  const now = new Date();
+  const estString = getTodayStringEST();
+  const localString = now.toISOString().split("T")[0];
+  const estTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/New_York" }),
+  );
+
+  return {
+    currentLocalTime: now.toString(),
+    currentESTTime: estTime.toString(),
+    estDateString: estString,
+    localDateString: localString,
+    timezoneOffset: now.getTimezoneOffset(),
+  };
+};
+
 export const addHabit = (
   appData: AppData,
   habitName: string,
